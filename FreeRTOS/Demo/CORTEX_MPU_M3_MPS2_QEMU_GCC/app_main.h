@@ -24,23 +24,12 @@
  *
  */
 
-	EXTERN vHandleMemoryFault
-	PUBLIC HardFault_Handler
+#ifndef __APP_MAIN_H__
+#define __APP_MAIN_H__
 
-	SECTION .text:CODE:NOROOT(2)
-	THUMB
-/*-----------------------------------------------------------*/
+/**
+ * @brief Main app entry point.
+ */
+void app_main( void );
 
-HardFault_Handler:
-	movs r0, #4
-	mov r1, lr
-	tst r0, r1
-	beq stacking_used_msp
-	mrs r0, psp
-	b vHandleMemoryFault
-	stacking_used_msp:
-		mrs r0, msp
-		b vHandleMemoryFault
-/*-----------------------------------------------------------*/
-
-	END
+#endif /* __APP_MAIN_H__ */
