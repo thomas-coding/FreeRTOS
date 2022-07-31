@@ -33,14 +33,16 @@
 
 #include "platform.h"
 #include "console.h"
+#include "console2.h"
+#include "tiny_console.h"
 
 static void user_task( void *pvParameters )
 {
 	uint32_t task_number = (uint32_t)pvParameters;
 	uint32_t count = 0;
 
-	//vs_printf("\n%s %s\n", __DATE__, __TIME__);
-	//vs_printf("task %d create succeed\n", task_number);
+	t_printf("\n%s %s\n", __DATE__, __TIME__);
+	t_printf("task %d create succeed\n", task_number);
 	while(1) {
 		bm_printf_value_u32("task running :",task_number);
 		vTaskDelay( pdMS_TO_TICKS(1000 * task_number) );
@@ -53,6 +55,8 @@ int main(void)
 
 	platform_init();
 	bm_printf("enter freertos main\n");
+	t_printf("t printf enter main....\n");
+	tiny_uart_console();
 
 	/* Create that task that handles the console itself. */
 	xTaskCreate(user_task,  /* The task that implements the command console. */

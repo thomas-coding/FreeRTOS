@@ -73,6 +73,9 @@ set(BSP_SRC_LIST
     ${CURRENT_FOLDER}/bsp/ips/smp/smp.c
     ${CURRENT_FOLDER}/bsp/ips/ttdevice/thomas_test_device.c
     ${CURRENT_FOLDER}/bsp/common/console.c
+    ${CURRENT_FOLDER}/bsp/common/console2.c
+    ${CURRENT_FOLDER}/bsp/common/tiny_console.c
+    ${CURRENT_FOLDER}/bsp/common/tiny_command.c
     )
 
 set(FREERTOS_PORTABLE_SRC_LIST

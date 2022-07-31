@@ -38,7 +38,13 @@ typedef struct UART_t {
 
 #define PL011_UARTFR_RXFE         (1 << 4)	/* Receive  FIFO empty */
 
+
+#define PL011_UARTLCR_H_FEN       (1 << 4)	/* FIFOs Enable */
+#define PL011_UARTLCR_H_WLEN_8    (3 << 5)
+#define PL011_LINE_CONTROL  (PL011_UARTLCR_H_FEN | PL011_UARTLCR_H_WLEN_8)
+
 void uart_init(void);
 void uart_putc(char c);
+char uart_getc(void);
 
 #endif
