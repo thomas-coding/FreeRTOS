@@ -37,7 +37,7 @@ function get_and_export_qemu()
     exit
 }
 
-get_and_export_qemu
+#get_and_export_qemu
 
 qemu_option=
 if [[ $1  = "--gdb" ]]; then

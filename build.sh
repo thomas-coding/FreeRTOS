@@ -7,7 +7,7 @@ workspace_dir=${shell_folder}/../../..
 # toolchain
 toolchains_try_dir1=${workspace_dir}/.toolchains;
 toolchains_try_dir2=~/.toolchain;
-toolchian=gcc-arm-none-eabi-10.3-2021.10
+toolchian=gcc-arm-none-eabi-10.3-2021.07
 
 # which demo to compile
 demo_dir=${shell_folder}/FreeRTOS/Demo/THOMAS_M3_QEMU
