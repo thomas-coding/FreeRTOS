@@ -8,7 +8,7 @@ include(pico_sdk_import.cmake)
 
 PROJECT(examples)
 
-add_subdirectory(OnEitherCore)
+#add_subdirectory(OnEitherCore)
 add_subdirectory(OnDualCore)
-add_subdirectory(Standard)
-add_subdirectory(UsingCMSIS)
+#add_subdirectory(Standard)
+#add_subdirectory(UsingCMSIS)
