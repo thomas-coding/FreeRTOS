@@ -486,6 +486,12 @@ secondary_cpus_init:
 
 	bl second_main
 #endif
+
+/* The base address of mailbox */
+#define SRAM_BASE		0x10000000
+#define SRAM_SIZE		0x02000000 /* 32MB */
+#define SMP_MAILBOXI_REG_OFFSET	(SRAM_SIZE - 0x40) //64 bytes for mailbox
+#define SMP_MAILBOXI_REG	(SRAM_BASE + SMP_MAILBOXI_REG_OFFSET)
 		/*
 	 * Holding Pen
 	 */
@@ -496,5 +502,21 @@ holding_pen:
 
 	NOP
 	NOP
+
+	/* get then enter point from mailbox */
+	ldr r0, =SMP_MAILBOXI_REG
+	ldr r1, [r0]
+	blx r1
+
+// spin lock test
+#if 0
+	ldr r3, =0x41000000
+	ldr r4, [r3] //get lock, ok return 1
+	ldr r4, [r3] //get lock, fail return 0
+
+	ldr r5, =0x100
+	str r5, [r3] //write for unlock
+	ldr r4, [r3] //get lock, ok return 1
+#endif
 
 	B	holding_pen

@@ -26,5 +26,5 @@ void platform_init(void)
 	//generic_timer_init();
     gtimer_init();
 	//thomas_test_device_init();
-	//smp_init();
+	smp_init();
 }

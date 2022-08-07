@@ -36,6 +36,8 @@
 #include "console2.h"
 #include "tiny_console.h"
 
+#include "interrupt.h"
+
 static void user_task( void *pvParameters )
 {
 	uint32_t task_number = (uint32_t)pvParameters;
@@ -44,10 +46,42 @@ static void user_task( void *pvParameters )
 	t_printf("\n%s %s\n", __DATE__, __TIME__);
 	t_printf("task %d create succeed\n", task_number);
 	while(1) {
-		bm_printf_value_u32("task running :",task_number);
+		t_printf("core[%d]: task running\n", cpu_id_get());
 		vTaskDelay( pdMS_TO_TICKS(1000 * task_number) );
 		count++;
 	}
+}
+
+void second_core_main(void)
+{
+	uint32_t count = 0;
+	t_printf("enter second core main\n");
+	while(1) {
+		t_printf("core[%d]: second core running \n", cpu_id_get());
+		for(int i = 0; i < 0xffffff; i++)
+			count++;
+	}
+}
+
+extern void smp_test(void);
+/* The base address of mailbox */
+#define SRAM_BASE		0x10000000
+#define SRAM_SIZE		0x02000000 /* 32MB */
+#define SMP_MAILBOXI_REG_OFFSET	(SRAM_SIZE - 0x40) //64 bytes for mailbox
+#define SMP_MAILBOXI_REG	(SRAM_BASE + SMP_MAILBOXI_REG_OFFSET)
+void start_second_core(void * enter)
+{
+	t_printf("start second core\n");
+	//set entry to mailbox
+	*(volatile uint32_t*)(SMP_MAILBOXI_REG) = (uint32_t)enter;
+
+    /* Registe handle for cpu1 irq, sgi interrupt number 0 */
+	//gic_isr_install(0, ISR_TYPE_IRQ, 1, NULL, NULL);
+	//gic_private_intr_conf(1, 0);
+	gic_private_intr_conf(1, 0);
+
+    /* Generate SGI to core 1, interrupt number is 0 */
+	gicc_sgi1r_set(0, 0, 0, 0, (1 << 1), 0);
 }
 
 int main(void)
@@ -56,6 +90,7 @@ int main(void)
 	platform_init();
 	bm_printf("enter freertos main\n");
 	t_printf("t printf enter main....\n");
+	start_second_core((void *)second_core_main);
 	tiny_uart_console();
 
 	/* Create that task that handles the console itself. */
