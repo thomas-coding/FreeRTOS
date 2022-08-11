@@ -299,6 +299,57 @@ Reset_Handler:
 	VMSR	FPEXC, r0
 #endif
 
+	/* Init gic */
+	/* Switch to SMC(Monitor) mode, this registers must be set in SMC mode */
+	MSR	CPSR_c, #SMC_MODE
+
+	/* Write MSRE, enable gic system register */
+	MOV	r0, #0x0f
+	MCR	p15, 6, r0, c12, c12, 5
+
+	/* Write SRE, enable gic system register */
+	MOV	r0, #0x07
+	MCR	p15, 0, r0, c12, c12, 5
+
+	/* ICC_MGRPEN1, set to igrp_enable_grp1ns | igrp_enable_grp1s */
+	MOV	r0, #0x03
+	MCR	p15, 6, r0, c12, c12, 7
+
+	/* Switch to svc mode */
+	MSR	CPSR_c, #SVC_MODE | I_BIT | F_BIT
+
+	/* Read CPU ID register */
+	MRC	p15, 0, r0, c0, c0, 5
+	/* Mask off, leaving the CPU ID field */
+	ANDS	r1, r0, #0x03
+
+	/*gicdctlr_ds*/
+	MOV	r0, #(1 << 5) | (1 << 4)
+	BL	gicd_are_sync
+
+	/*
+	 * The Redistributor comes out of reset assuming the processor is
+	 * asleep - correct that assumption
+	 */
+	MOV	r0, r1
+	BL	gicr_wakeup
+
+	/*
+	 * Now we're ready to set security and other initialisations
+	 * This is a per-CPU configuration for these interrupts
+	 * for the first cluster, CPU number is the redistributor index
+	 */
+	MOV	r0, r1
+	MOV	r1, #2			/* gicigroup_g1s */
+	BL	private_intr_security_block_set
+
+	/*
+	 * While we're in the Secure World, set the priority mask low enough
+	 * for it to be writable in the Non-Secure World
+	 */
+	MOV	r0, #0xff		/* for Non-Secure interrupts */
+	MCR	p15, 0, r0, c4, c6, 0	/* ICC_PMR */
+
 
 	/*
 	 * SMP initialization
@@ -351,56 +402,6 @@ primary_cpu_init:
 	b		.L_loop0_1
 .L_loop0_1_done:
 
-	/* Init gic */
-	/* Switch to SMC(Monitor) mode, this registers must be set in SMC mode */
-	MSR	CPSR_c, #SMC_MODE
-
-	/* Write MSRE, enable gic system register */
-	MOV	r0, #0x0f
-	MCR	p15, 6, r0, c12, c12, 5
-
-	/* Write SRE, enable gic system register */
-	MOV	r0, #0x07
-	MCR	p15, 0, r0, c12, c12, 5
-
-	/* ICC_MGRPEN1, set to igrp_enable_grp1ns | igrp_enable_grp1s */
-	MOV	r0, #0x03
-	MCR	p15, 6, r0, c12, c12, 7
-
-	/* Switch to svc mode */
-	MSR	CPSR_c, #SVC_MODE | I_BIT | F_BIT
-
-	/* Read CPU ID register */
-	MRC	p15, 0, r0, c0, c0, 5
-	/* Mask off, leaving the CPU ID field */
-	ANDS	r1, r0, #0x03
-	/*gicdctlr_ds*/
-	MOV	r0, #(1 << 5) | (1 << 4)
-	BL	gicd_are_sync
-
-	/*
-	 * The Redistributor comes out of reset assuming the processor is
-	 * asleep - correct that assumption
-	 */
-	MOV	r0, r1
-	BL	gicr_wakeup
-
-	/*
-	 * Now we're ready to set security and other initialisations
-	 * This is a per-CPU configuration for these interrupts
-	 * for the first cluster, CPU number is the redistributor index
-	 */
-	MOV	r0, r1
-	MOV	r1, #2			/* gicigroup_g1s */
-	BL	private_intr_security_block_set
-
-	/*
-	 * While we're in the Secure World, set the priority mask low enough
-	 * for it to be writable in the Non-Secure World
-	 */
-	MOV	r0, #0xff		/* for Non-Secure interrupts */
-	MCR	p15, 0, r0, c4, c6, 0	/* ICC_PMR */
-
 	bl		main
 	b		.
 
@@ -410,79 +411,12 @@ primary_cpu_init:
 	.global secondary_cpus_init
 	.type secondary_cpus_init, "function"
 secondary_cpus_init:
-	/* Init gic */
-	/* Switch to SMC(Monitor) mode, this registers must be set in SMC mode */
-	MSR	CPSR_c, #SMC_MODE
-
-	/* Write MSRE, enable gic system register */
-	MOV	r0, #0x0f
-	MCR	p15, 6, r0, c12, c12, 5
-
-	/* Write SRE, enable gic system register */
-	MOV	r0, #0x07
-	MCR	p15, 0, r0, c12, c12, 5
-
-	/* ICC_MGRPEN1, set to igrp_enable_grp1ns | igrp_enable_grp1s */
-	MOV	r0, #0x03
-	MCR	p15, 6, r0, c12, c12, 7
-
-	/* Switch to svc mode */
-	MSR	CPSR_c, #SVC_MODE | I_BIT | F_BIT
-
-	/* Read CPU ID register */
-	MRC	p15, 0, r0, c0, c0, 5
-	/* Mask off, leaving the CPU ID field */
-	and	r1, r0, #0x03
-	/*gicdctlr_ds*/
-	//MOV	r0, #(1 << 5) | (1 << 4)
-	//BL	gicd_are_sync
-
 	/*
-	 * The Redistributor comes out of reset assuming the processor is
-	 * asleep - correct that assumption
+	 * GIC Init
 	 */
-	MOV	r0, r1
-	BL	gicr_wakeup
-
-	/*
-	 * Now we're ready to set security and other initialisations
-	 * This is a per-CPU configuration for these interrupts
-	 * for the first cluster, CPU number is the redistributor index
-	 */
-	MOV	r0, r1
-	MOV	r1, #2			/* gicigroup_g1s */
-	BL	private_intr_security_block_set
-
-	/*
-	 * While we're in the Secure World, set the priority mask low enough
-	 * for it to be writable in the Non-Secure World
-	 */
-	MOV	r0, #0xff		/* for Non-Secure interrupts */
-	MCR	p15, 0, r0, c4, c6, 0	/* ICC_PMR */
-
-	MOV	r0, #1
+	MOV	r0, #0x1
 	MCR	p15, 0, r0, c12, c12, 6	  /* ICC_IGRPEN0 */
 	MCR	p15, 0, r0, c12, c12, 7   /* ICC_IGRPEN1 */
-
-	/* Read CPU ID register */
-	MRC	p15, 0, r0, c0, c0, 5
-	/* Mask off, leaving the CPU ID field */
-	ANDS	r0, r0, #0x03
-
-	MOV	r1, #0
-	MOV	r2, #14 << 4
-	BL	private_intr_priority_set
-
-#if 0
-	/* wait for primary core run ok, then we can use print */
-	ldr r0, =0xffffff
-1:
-	sub r0, #1
-	cmp r0, #0
-	bne 1b
-
-	bl second_main
-#endif
 
 		/*
 	 * Holding Pen
