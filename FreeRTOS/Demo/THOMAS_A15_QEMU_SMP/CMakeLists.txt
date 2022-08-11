@@ -46,6 +46,7 @@ include_directories(./bsp/ips/mmu)
 include_directories(./bsp/ips/pl011)
 include_directories(./bsp/ips/smp)
 include_directories(./bsp/ips/ttdevice)
+include_directories(./bsp/ips/hw_spinlock)
 include_directories(./bsp/common)
 include_directories(./bsp/core)
 
@@ -72,6 +73,7 @@ set(BSP_SRC_LIST
     ${CURRENT_FOLDER}/bsp/ips/pl011/pl011.c
     ${CURRENT_FOLDER}/bsp/ips/smp/smp.c
     ${CURRENT_FOLDER}/bsp/ips/ttdevice/thomas_test_device.c
+    ${CURRENT_FOLDER}/bsp/ips/hw_spinlock/hw_spinlock.c
     ${CURRENT_FOLDER}/bsp/common/console.c
     ${CURRENT_FOLDER}/bsp/common/console2.c
     ${CURRENT_FOLDER}/bsp/common/tiny_console.c

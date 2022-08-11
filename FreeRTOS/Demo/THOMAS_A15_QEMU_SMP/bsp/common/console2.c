@@ -9,6 +9,9 @@
 #include <pl011.h>
 #include <string.h>
 #include <ctype.h>
+#include <hw_spinlock.h>
+
+int printf_lock;
 
 #define out_byte	uart_putc
 
@@ -160,8 +163,6 @@ static int get_num(char **linep)
  * Other formats could be added easily by following the examples shown for the
  * supported formats.
  */
-extern void get_lock(uint8_t spin_lock_id);
-extern void release_lock(uint8_t spin_lock_id);
 
 void console_printf(const char *ctrl1, ...)
 {
@@ -176,7 +177,7 @@ void console_printf(const char *ctrl1, ...)
 	va_list argp;
 	char *ctrl = (char *)ctrl1;
 
-	get_lock(2);
+	hwspin_lock(printf_lock);
 
 	va_start(argp, ctrl1);
 
@@ -328,5 +329,11 @@ void console_printf(const char *ctrl1, ...)
 	}
 	va_end(argp);
 
-	release_lock(2);
+	hwspin_unlock(printf_lock);
+}
+
+void console2_init(void)
+{
+	uart_init();
+	printf_lock = hwspin_lock_request();
 }

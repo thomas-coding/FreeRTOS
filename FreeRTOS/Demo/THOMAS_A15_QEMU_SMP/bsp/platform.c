@@ -15,15 +15,16 @@
 #include <timer.h>
 #include <thomas_test_device.h>
 #include <smp.h>
+#include <hw_spinlock.h>
 
 extern void hw_spin_lock_init(void);
 void platform_init(void)
 {
-	console_init();
+	hw_spin_lock_init();
+	console2_init();
 	mmu_init();
 	cache_init();
 	gic_init();
-	hw_spin_lock_init();
 	//misc_init();
 	//generic_timer_init();
     gtimer_init();

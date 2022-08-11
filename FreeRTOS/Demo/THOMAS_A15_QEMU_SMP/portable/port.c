@@ -35,6 +35,10 @@
 #include "task.h"
 #include <string.h>
 
+#include <hw_spinlock.h>
+int task_lock;
+int isr_lock;
+
 #ifndef configINTERRUPT_CONTROLLER_BASE_ADDRESS
 	#error configINTERRUPT_CONTROLLER_BASE_ADDRESS must be defined.  See https://www.FreeRTOS.org/Using-FreeRTOS-on-Cortex-A-Embedded-Processors.html
 #endif
@@ -909,91 +913,10 @@ int rtos_isr_running(void) {
 	return is_svc_mode() || is_irq_mode();
 }
 
-
-#define SPIN_LOCK_BASE	0x41000000
-#define HW_SPIN_LOCK_NUMBER 4
-struct spin_lock {
-	uint8_t id;
-	uint32_t address;
-	uint32_t recursive;
-	uint8_t cpuid; //ownerd to which core
-};
-
-struct spin_lock hw_spin_lock[HW_SPIN_LOCK_NUMBER];
-
-void hw_spin_lock_init(void) {
-	for(int i = 0; i < HW_SPIN_LOCK_NUMBER; i++) {
-		hw_spin_lock[i].id = i;
-		hw_spin_lock[i].address = SPIN_LOCK_BASE + 4 * i;
-		hw_spin_lock[i].recursive = 0;
-	}
-}
-
-void get_lock(uint8_t spin_lock_id) {
-	/* spin for get lock */
-	while(read_mreg32(hw_spin_lock[spin_lock_id].address) ==0) {};
-}
-
-void release_lock(uint8_t spin_lock_id) {
-	write_mreg32(hw_spin_lock[spin_lock_id].address, 0);//write for unlock
-}
-
-void get_lock_recursive(uint8_t spin_lock_id) {
-	int cpuid = cpu_id_get();
-	if(read_mreg32(hw_spin_lock[spin_lock_id].address) == 1) {//unlock
-		hw_spin_lock[spin_lock_id].cpuid = cpuid;
-		hw_spin_lock[spin_lock_id].recursive++;
-		return;
-	}
-
-	if(hw_spin_lock[spin_lock_id].cpuid == cpuid) {//we ownerd self
-		hw_spin_lock[spin_lock_id].recursive++;
-		return;
-	}
-
-	/* spin for get lock */
-	while(read_mreg32(hw_spin_lock[spin_lock_id].address) ==0) {};
-
-	/* get lock, update cpuid and recursive */
-	hw_spin_lock[spin_lock_id].cpuid = cpuid;
-	hw_spin_lock[spin_lock_id].recursive++;
-}
-
-void release_lock_recursive(uint8_t spin_lock_id) {
-
-	hw_spin_lock[spin_lock_id].recursive--;
-	
-	if(hw_spin_lock[spin_lock_id].recursive == 0) {
-		write_mreg32(hw_spin_lock[spin_lock_id].address, 0);//write for unlock
-	}
-
-}
-
-// Note currently we support configNUM_CORES == 1 with SMP, thought it isn't 100% clear why you wouldn't
-// just use the non SMP version; keeping around for now in case the code bases are merged.
-#define portRUNNING_ON_BOTH_CORES (configNUM_CORES == portMAX_CORE_COUNT)
-
-/* Note: portIS_FREE_RTOS_CORE() also returns false until the scheduler is started */
-#if ( portRUNNING_ON_BOTH_CORES == 1 )
-    #define portIS_FREE_RTOS_CORE() (ucPrimaryCoreNum != INVALID_PRIMARY_CORE_NUM)
-#else
-    #define portIS_FREE_RTOS_CORE() (ucPrimaryCoreNum == cpu_id_get())
-#endif
-
-void second_core_scheduler_start(void) {
-    t_printf("second core start running\n");
-
-    /* Config SGI1 priority the same as core0 tick, used for task switch */
-    gic_set_interrupt_priority(1, portLOWEST_USABLE_INTERRUPT_PRIORITY << portPRIORITY_SHIFT);
-
-    /* Runing first task on core 1 */
-    vPortRestoreTaskContext();
-}
-
 uint32_t mailbox[16] = {0xa5a5a5a5};
 void start_second_core(void * enter)
 {
-    t_printf("start second core\n");
+    t_printf("launch second core\n");
 
     /* Set second core entry to mailbox */
     mailbox[0] = (uint32_t)enter;
@@ -1021,6 +944,9 @@ BaseType_t xPortStartScheduler(void)
 	__asm volatile ("MRS %0, APSR" : "=r" (ulAPSR) :: "memory");
 	ulAPSR &= portAPSR_MODE_BITS_MASK;
 	configASSERT(ulAPSR != portAPSR_USER_MODE);
+
+	task_lock = hwspin_lock_request();
+	isr_lock = hwspin_lock_request();
 
 #if portRUNNING_ON_BOTH_CORES
 	configASSERT( cpu_id_get() == 0) ; // we must be started on core 0

@@ -241,12 +241,13 @@ extern int rtos_isr_running(void);
 maintaining a separate value and then saving this value in the task stack. */
 #define portCRITICAL_NESTING_IN_TCB		1
 
-extern void get_lock_recursive(uint8_t spin_lock_id);
-extern void release_lock_recursive(uint8_t spin_lock_id);
-#define portGET_ISR_LOCK()      get_lock_recursive(0)
-#define portRELEASE_ISR_LOCK()  release_lock_recursive(0)
-#define portGET_TASK_LOCK()     get_lock_recursive(1)
-#define portRELEASE_TASK_LOCK() release_lock_recursive(1)
+#include "hw_spinlock.h"
+extern int task_lock;
+extern int isr_lock;
+#define portGET_ISR_LOCK()      hwspin_lock_core_recursive(isr_lock)
+#define portRELEASE_ISR_LOCK()  hwspin_unlock_core_recursive(isr_lock)
+#define portGET_TASK_LOCK()     hwspin_lock_core_recursive(task_lock)
+#define portRELEASE_TASK_LOCK() hwspin_unlock_core_recursive(task_lock)
 
 void vTaskEnterCritical(void);
 void vTaskExitCritical(void);
