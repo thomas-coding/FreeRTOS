@@ -473,9 +473,6 @@ secondary_cpus_init:
 	MOV	r2, #14 << 4
 	BL	private_intr_priority_set
 
-	/* Enable interrupts and fast interrupts */
-	CPSIE	if
-
 #if 0
 	/* wait for primary core run ok, then we can use print */
 	ldr r0, =0xffffff
@@ -502,6 +499,9 @@ holding_pen:
 
 	NOP
 	NOP
+
+	/* Enable interrupts and fast interrupts */
+	CPSIE	if
 
 	/* Enable MMU */
 	bl mmu_init

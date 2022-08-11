@@ -981,24 +981,13 @@ void release_lock_recursive(uint8_t spin_lock_id) {
 #endif
 
 void second_core_scheduler_start(void) {
-#if 0
-		int count = 0;
-		/* Start the first task executing. */
-		t_printf("second core scheduler start 1111\n");
-		for(int i = 0; i< 0xffffff; i++)
-			count++;
-		t_printf("second core scheduler after delay:0x%08x\n", count);
-#endif
-		gic_set_interrupt_priority(1 , portLOWEST_USABLE_INTERRUPT_PRIORITY << portPRIORITY_SHIFT);
-		vPortRestoreTaskContext();	
-}
+    t_printf("second core start running\n");
 
+    /* Config SGI1 priority the same as core0 tick, used for task switch */
+    gic_set_interrupt_priority(1, portLOWEST_USABLE_INTERRUPT_PRIORITY << portPRIORITY_SHIFT);
 
-void core1_sgi_handle(int id, void *dev_id)
-{
-	//t_printf("Hello IRQ [%d] from CPU [%d]", id, cpu_id_get());
-	//__asm volatile ("swi 0");
-
+    /* Runing first task on core 1 */
+    vPortRestoreTaskContext();
 }
 
 /* The base address of mailbox */
@@ -1008,25 +997,23 @@ void core1_sgi_handle(int id, void *dev_id)
 #define SMP_MAILBOXI_REG	(SRAM_BASE + SMP_MAILBOXI_REG_OFFSET)
 void start_second_core(void * enter)
 {
-	t_printf("start second core\n");
-	//set entry to mailbox
-	*(volatile uint32_t*)(SMP_MAILBOXI_REG) = (uint32_t)enter;
+    t_printf("start second core\n");
 
-    /* Registe handle for cpu1 irq, sgi interrupt number 0 */
-	gic_isr_install(0, ISR_TYPE_IRQ, 1, NULL, NULL);
-	gic_private_intr_conf(1, 0);
+    /* Set second core entry to mailbox */
+    *(volatile uint32_t*)(SMP_MAILBOXI_REG) = (uint32_t)enter;
+
+    /* Config core1 sgi, interrupt number 0 */
+    gic_isr_install(0, ISR_TYPE_IRQ, 1, NULL, NULL);
+    gic_private_intr_conf(1, 0);
 
     /* Generate SGI to core 1, interrupt number is 0 */
-	gicc_sgi1r_set(0, 0, 0, 0, (1 << 1), 0);
+    gicc_sgi1r_set(0, 0, 0, 0, (1 << 1), 0);
 
-	/* After this, core 1 run from wfi and call sechedualer start*/
+    /* After this, core 1 run from wfi and call enter function*/
 
-    /* Registe handle for cpu1 irq, sgi interrupt number 1 */
-	gic_isr_install(1, ISR_TYPE_IRQ, 1, core1_sgi_handle, NULL);
-	gic_private_intr_conf(1, 1);
-	//gic_set_interrupt_priority(1 , portLOWEST_USABLE_INTERRUPT_PRIORITY << portPRIORITY_SHIFT);
-
-
+    /* Config core1 sgi 1 for receive core0 task switch request */
+    gic_isr_install(1, ISR_TYPE_IRQ, 1, NULL, NULL);
+    gic_private_intr_conf(1, 1);
 }
 
 BaseType_t xPortStartScheduler(void)
@@ -1042,15 +1029,6 @@ BaseType_t xPortStartScheduler(void)
 #if portRUNNING_ON_BOTH_CORES
 	configASSERT( cpu_id_get() == 0) ; // we must be started on core 0
 	start_second_core( second_core_scheduler_start );
-#endif
-
-#if 0
-		int count = 0;
-		/* Start the first task executing. */
-		t_printf("core0 wait\n");
-		for(int i = 0; i< 0xffffff; i++)
-			count++;
-		t_printf("core0 wait ok after delay:0x%08x\n", count);
 #endif
 
 	if (ulAPSR != portAPSR_USER_MODE) {
@@ -1091,8 +1069,7 @@ BaseType_t xPortStartScheduler(void)
 
 // notify core1 to svc
 void smp_port_yield(BaseType_t cpuid) {
-    /* Generate SGI to core 1, interrupt number is 1 */
-	//t_printf("let core1 do\n");
-	ulPortYieldRequired[1] = pdTRUE;
-	gicc_sgi1r_set(0, 0, 0, 0, (1 << 1), 1);
+    /* Generate SGI 1 to core 1, set yield required so after isr it will switch context */
+    ulPortYieldRequired[1] = pdTRUE;
+    gicc_sgi1r_set(0, 0, 0, 0, (1 << 1), 1);
 }
