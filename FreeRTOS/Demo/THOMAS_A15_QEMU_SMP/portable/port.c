@@ -990,17 +990,13 @@ void second_core_scheduler_start(void) {
     vPortRestoreTaskContext();
 }
 
-/* The base address of mailbox */
-#define SRAM_BASE		0x10000000
-#define SRAM_SIZE		0x02000000 /* 32MB */
-#define SMP_MAILBOXI_REG_OFFSET	(SRAM_SIZE - 0x40) //64 bytes for mailbox
-#define SMP_MAILBOXI_REG	(SRAM_BASE + SMP_MAILBOXI_REG_OFFSET)
+uint32_t mailbox[16] = {0xa5a5a5a5};
 void start_second_core(void * enter)
 {
     t_printf("start second core\n");
 
     /* Set second core entry to mailbox */
-    *(volatile uint32_t*)(SMP_MAILBOXI_REG) = (uint32_t)enter;
+    mailbox[0] = (uint32_t)enter;
 
     /* Config core1 sgi, interrupt number 0 */
     gic_isr_install(0, ISR_TYPE_IRQ, 1, NULL, NULL);

@@ -484,11 +484,6 @@ secondary_cpus_init:
 	bl second_main
 #endif
 
-/* The base address of mailbox */
-#define SRAM_BASE		0x10000000
-#define SRAM_SIZE		0x02000000 /* 32MB */
-#define SMP_MAILBOXI_REG_OFFSET	(SRAM_SIZE - 0x40) //64 bytes for mailbox
-#define SMP_MAILBOXI_REG	(SRAM_BASE + SMP_MAILBOXI_REG_OFFSET)
 		/*
 	 * Holding Pen
 	 */
@@ -507,7 +502,7 @@ holding_pen:
 	bl mmu_init
 
 	/* get then enter point from mailbox */
-	ldr r0, =SMP_MAILBOXI_REG
+	ldr r0, =mailbox
 	ldr r1, [r0]
 	blx r1
 
