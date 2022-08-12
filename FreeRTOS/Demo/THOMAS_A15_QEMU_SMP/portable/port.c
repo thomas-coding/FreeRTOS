@@ -913,6 +913,27 @@ int rtos_isr_running(void) {
 	return is_svc_mode() || is_irq_mode();
 }
 
+// Note currently we support configNUM_CORES == 1 with SMP, thought it isn't 100% clear why you wouldn't
+// just use the non SMP version; keeping around for now in case the code bases are merged.
+#define portRUNNING_ON_BOTH_CORES (configNUM_CORES == portMAX_CORE_COUNT)
+
+/* Note: portIS_FREE_RTOS_CORE() also returns false until the scheduler is started */
+#if ( portRUNNING_ON_BOTH_CORES == 1 )
+    #define portIS_FREE_RTOS_CORE() (ucPrimaryCoreNum != INVALID_PRIMARY_CORE_NUM)
+#else
+    #define portIS_FREE_RTOS_CORE() (ucPrimaryCoreNum == cpu_id_get())
+#endif
+
+void second_core_scheduler_start(void) {
+    t_printf("second core start running\n");
+
+    /* Config SGI1 priority the same as core0 tick, used for task switch */
+    gic_set_interrupt_priority(1, portLOWEST_USABLE_INTERRUPT_PRIORITY << portPRIORITY_SHIFT);
+
+    /* Runing first task on core 1 */
+    vPortRestoreTaskContext();
+}
+
 uint32_t mailbox[16] = {0xa5a5a5a5};
 void start_second_core(void * enter)
 {
