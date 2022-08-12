@@ -925,3 +925,20 @@ void smp_port_yield(BaseType_t cpuid) {
     ulPortYieldRequired[1] = pdTRUE;
     gicc_sgi1r_set(0, 0, 0, 0, (1 << 1), 1);
 }
+
+void portGET_ISR_LOCK(void) {
+	hwspin_lock_core_recursive(isr_lock);
+}
+
+void portRELEASE_ISR_LOCK(void) {
+	hwspin_unlock_core_recursive(isr_lock);
+}
+
+void portGET_TASK_LOCK(void) {
+	hwspin_lock_core_recursive(task_lock);
+}
+
+void portRELEASE_TASK_LOCK(void) {
+	hwspin_unlock_core_recursive(task_lock);
+}
+

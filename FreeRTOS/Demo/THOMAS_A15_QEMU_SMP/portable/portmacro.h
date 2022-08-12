@@ -25,6 +25,9 @@
  * 1 tab == 4 spaces!
  */
 
+#include <interrupt.h>
+#include "hw_spinlock.h"
+
 #ifndef PORTMACRO_H
 #define PORTMACRO_H
 
@@ -72,7 +75,6 @@ not need to be guarded with a critical section. */
 /*-----------------------------------------------------------*/
 
 /* Task utilities. */
-
 extern void vPortYieldFromIsr(BaseType_t xSwitchRequired);
 #define portYIELD_FROM_ISR(x) vPortYieldFromIsr(x);
 #define portYIELD() do {__asm volatile ("SWI 0" ::: "memory"); } while (0)
@@ -81,28 +83,18 @@ extern void vPortYieldFromIsr(BaseType_t xSwitchRequired);
 /*-----------------------------------------------------------
  * Critical section control
  *----------------------------------------------------------*/
-
 extern void vPortEnterCritical(void);
 extern void vPortExitCritical(void);
-//extern uint32_t ulPortSetInterruptMask(void);
-//extern void vPortClearInterruptMask(uint32_t ulNewMaskValue);
 extern void vPortInstallFreeRTOSVectorTable(void);
 
 extern void portRESTORE_INTERRUPTS(uint32_t ulNewMaskValue);
 extern uint32_t portDISABLE_INTERRUPTS(void);
 extern void portENABLE_INTERRUPTS(void);
+
+/*-----------------------------------------------------------
+ * Yield
+ *----------------------------------------------------------*/
 extern void smp_port_yield(BaseType_t cpuid);
-
-/* These macros do not globally disable/enable interrupts.  They do mask off
-interrupts that have a priority below configMAX_API_CALL_INTERRUPT_PRIORITY. */
-//#define portENTER_CRITICAL()		vPortEnterCritical();
-//#define portEXIT_CRITICAL()			vPortExitCritical();
-
-//#define portDISABLE_INTERRUPTS()	ulPortSetInterruptMask()
-//#define portENABLE_INTERRUPTS()		vPortClearInterruptMask(0)
-
-//#define portSET_INTERRUPT_MASK_FROM_ISR()		ulPortSetInterruptMask()
-//#define portCLEAR_INTERRUPT_MASK_FROM_ISR(x)	vPortClearInterruptMask(x)
 
 /*-----------------------------------------------------------*/
 
@@ -207,7 +199,6 @@ number of bits implemented by the interrupt controller. */
 #define configNUM_CORES               2
 #endif
 
-#include <interrupt.h>
 /* FreeRTOS core id is always zero based, so always 0 if we're running on only one core */
 #if configNUM_CORES == portMAX_CORE_COUNT
 #define portGET_CORE_ID() cpu_id_get()
@@ -226,20 +217,16 @@ extern int rtos_isr_running(void);
 maintaining a separate value and then saving this value in the task stack. */
 #define portCRITICAL_NESTING_IN_TCB		1
 
-#include "hw_spinlock.h"
-extern int task_lock;
-extern int isr_lock;
-#define portGET_ISR_LOCK()      hwspin_lock_core_recursive(isr_lock)
-#define portRELEASE_ISR_LOCK()  hwspin_unlock_core_recursive(isr_lock)
-#define portGET_TASK_LOCK()     hwspin_lock_core_recursive(task_lock)
-#define portRELEASE_TASK_LOCK() hwspin_unlock_core_recursive(task_lock)
+extern void portGET_ISR_LOCK();
+extern void portRELEASE_ISR_LOCK();
+extern void portGET_TASK_LOCK();
+extern void portRELEASE_TASK_LOCK();
 
 void vTaskEnterCritical(void);
 void vTaskExitCritical(void);
 #define portENTER_CRITICAL()                   vTaskEnterCritical()
 #define portEXIT_CRITICAL()                    vTaskExitCritical()
 
-//how to let core a to call svc?
 #define portYIELD_CORE(a) smp_port_yield(a)
 
 #endif /* PORTMACRO_H */
