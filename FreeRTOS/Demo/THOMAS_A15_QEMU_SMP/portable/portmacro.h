@@ -84,25 +84,25 @@ extern void vPortYieldFromIsr(BaseType_t xSwitchRequired);
 
 extern void vPortEnterCritical(void);
 extern void vPortExitCritical(void);
-extern uint32_t ulPortSetInterruptMask(void);
-extern void vPortClearInterruptMask(uint32_t ulNewMaskValue);
+//extern uint32_t ulPortSetInterruptMask(void);
+//extern void vPortClearInterruptMask(uint32_t ulNewMaskValue);
 extern void vPortInstallFreeRTOSVectorTable(void);
+
+extern void portRESTORE_INTERRUPTS(uint32_t ulNewMaskValue);
+extern uint32_t portDISABLE_INTERRUPTS(void);
+extern void portENABLE_INTERRUPTS(void);
+extern void smp_port_yield(BaseType_t cpuid);
 
 /* These macros do not globally disable/enable interrupts.  They do mask off
 interrupts that have a priority below configMAX_API_CALL_INTERRUPT_PRIORITY. */
 //#define portENTER_CRITICAL()		vPortEnterCritical();
 //#define portEXIT_CRITICAL()			vPortExitCritical();
-#if 1
-#define portDISABLE_INTERRUPTS()	ulPortSetInterruptMask()
-#define portENABLE_INTERRUPTS()		vPortClearInterruptMask(0)
-#else //test smp, just disable and enable irq
-extern uint32_t disalbe_cpu_irq(void);
-extern void enable_cpu_irq(void);
-#define portDISABLE_INTERRUPTS()	disalbe_cpu_irq()
-#define portENABLE_INTERRUPTS()		enable_cpu_irq()
-#endif
-#define portSET_INTERRUPT_MASK_FROM_ISR()		ulPortSetInterruptMask()
-#define portCLEAR_INTERRUPT_MASK_FROM_ISR(x)	vPortClearInterruptMask(x)
+
+//#define portDISABLE_INTERRUPTS()	ulPortSetInterruptMask()
+//#define portENABLE_INTERRUPTS()		vPortClearInterruptMask(0)
+
+//#define portSET_INTERRUPT_MASK_FROM_ISR()		ulPortSetInterruptMask()
+//#define portCLEAR_INTERRUPT_MASK_FROM_ISR(x)	vPortClearInterruptMask(x)
 
 /*-----------------------------------------------------------*/
 
@@ -215,21 +215,6 @@ number of bits implemented by the interrupt controller. */
 #define portGET_CORE_ID() 0
 #endif
 
-/* Each core can set its mask, so when restore, we should restore its own origin mask value */
-/* Now we ignore it, just clear mask for enable */
-#if 0
-#define portRESTORE_INTERRUPTS(ulState) \
-	{ \
-	ulState = 0; \
-	vPortClearInterruptMask(ulState); \
-	}
-#else //for smp restore not enable irq
-#define portRESTORE_INTERRUPTS(ulState) \
-	{ \
-	portSET_INTERRUPT_MASK(ulState); \
-	}
-#endif
-
 /*
  * Returns non-zero if currently running in an
  * ISR or otherwise in kernel mode.
@@ -255,6 +240,6 @@ void vTaskExitCritical(void);
 #define portEXIT_CRITICAL()                    vTaskExitCritical()
 
 //how to let core a to call svc?
-#define portYIELD_CORE(a) smp_port_yield()
+#define portYIELD_CORE(a) smp_port_yield(a)
 
 #endif /* PORTMACRO_H */

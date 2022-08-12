@@ -23,6 +23,7 @@ struct params_s {
 	uint8_t hex_upper;		/* Hexadecimal data output to upper case */
 };
 
+void console2_init(void);
 void console_printf(const char *ctrl1, ...);
 
 #define t_printf(fmt, arg ...)		console_printf(fmt, ##arg)

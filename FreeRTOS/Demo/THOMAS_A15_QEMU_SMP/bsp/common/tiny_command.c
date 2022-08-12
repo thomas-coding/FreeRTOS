@@ -311,6 +311,7 @@ static void unmap_sysmem(void *vaddr)
 /*
  * Help
  */
+extern void main_blinky( void );
 static int do_run_blink(struct tiny_cmd *cmd, int argc, char *argv[])
 {
 

@@ -42,7 +42,6 @@ static void user_task( void *pvParameters )
 {
 	uint32_t task_number = (uint32_t)pvParameters;
 	uint32_t count = 0;
-	uint32_t reg;
 
 	
 	t_printf("\n%s %s\n", __DATE__, __TIME__);

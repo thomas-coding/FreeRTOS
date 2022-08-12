@@ -38,6 +38,7 @@
 #include <hw_spinlock.h>
 int task_lock;
 int isr_lock;
+uint32_t portDISABLE_INTERRUPTS(void);
 
 #ifndef configINTERRUPT_CONTROLLER_BASE_ADDRESS
 	#error configINTERRUPT_CONTROLLER_BASE_ADDRESS must be defined.  See https://www.FreeRTOS.org/Using-FreeRTOS-on-Cortex-A-Embedded-Processors.html
@@ -135,41 +136,6 @@ the CPU itself before modifying certain hardware registers. */
 	__asm volatile ("ISB");										\
 	}															\
 	while (0)
-
-//test for smp
-uint32_t disalbe_cpu_irq(void) {
-	__asm volatile ("CPSID i" ::: "memory");
-	__asm volatile ("DSB");
-	__asm volatile ("ISB");
-	return pdTRUE;
-}
-
-void enable_cpu_irq(void) {
-	__asm volatile ("CPSIE i" ::: "memory");
-	__asm volatile ("DSB");
-	__asm volatile ("ISB");
-}
-
-/* Macro to unmask all interrupt priorities. */
-#if 1
-#define portCLEAR_INTERRUPT_MASK()									\
-{																	\
-	portCPU_IRQ_DISABLE();											\
-	asm volatile("mcr p15, 0, %0, c4, c6, 0" : : "r" ((uint32_t)portUNMASK_VALUE));			\
-	__asm volatile ("DSB\n"								\
-						"ISB\n");							\
-	portCPU_IRQ_ENABLE();											\
-}
-#else
-#define portCLEAR_INTERRUPT_MASK()									\
-{																	\
-	portCPU_IRQ_DISABLE();											\
-	portICCPMR_PRIORITY_MASK_REGISTER = portUNMASK_VALUE;			\
-	__asm volatile ("DSB\n"								\
-						"ISB\n");							\
-	portCPU_IRQ_ENABLE();											\
-}
-#endif
 
 #define portINTERRUPT_PRIORITY_REGISTER_OFFSET		0x400UL
 #define portMAX_8_BIT_VALUE							((uint8_t) 0xff)
@@ -355,7 +321,7 @@ static void prvTaskExitError(void)
 
 	Artificially force an assert() to be triggered if configASSERT() is
 	defined, then stop here so application writers can catch the error. */
-	configASSERT(ulPortInterruptNesting == ~0UL);
+	configASSERT(ulPortInterruptNesting[cpu_id_get()] == ~0UL);
 	portDISABLE_INTERRUPTS();
 	for ( ;; )
 	;
@@ -458,7 +424,8 @@ void vPortEndScheduler(void)
 void vPortEnterCritical(void)
 {
 	/* Mask interrupts up to the max syscall interrupt priority. */
-	ulPortSetInterruptMask();
+	//ulPortSetInterruptMask();
+	portDISABLE_INTERRUPTS();
 
 	/* Now interrupts are disabled ulCriticalNesting can be accessed
 	directly.  Increment ulCriticalNesting to keep a count of how many times
@@ -471,7 +438,7 @@ void vPortEnterCritical(void)
 	the critical nesting count is 1 to protect against recursive calls if the
 	assert function also uses a critical section. */
 	if (ulCriticalNesting == 1) {
-		configASSERT(ulPortInterruptNesting == 0);
+		configASSERT(ulPortInterruptNesting[cpu_id_get()] == 0);
 	}
 }
 /*-----------------------------------------------------------*/
@@ -488,7 +455,7 @@ void vPortExitCritical(void)
 		if (ulCriticalNesting == portNO_CRITICAL_NESTING) {
 			/* Critical nesting has reached zero so all interrupt priorities
 			should be unmasked. */
-			portCLEAR_INTERRUPT_MASK();
+			portENABLE_INTERRUPTS();
 		}
 	}
 }
@@ -525,7 +492,7 @@ void FreeRTOS_Tick_Handler(void)
 	}
 
 	/* Ensure all interrupt priorities are active again. */
-	portCLEAR_INTERRUPT_MASK();
+	portENABLE_INTERRUPTS();
 	configCLEAR_TICK_INTERRUPT();
 }
 /*-----------------------------------------------------------*/
@@ -547,79 +514,17 @@ void vPortTaskUsesFPU(void)
 #endif /* configUSE_TASK_FPU_SUPPORT */
 /*-----------------------------------------------------------*/
 #include "console2.h"
-#if 0
-void vPortClearInterruptMask(uint32_t ulNewMaskValue)
-{
-	if (ulNewMaskValue == pdFALSE) {
-		portCLEAR_INTERRUPT_MASK();
-	}
-}
-#else
-// it need clear, so we just clear
-void vPortClearInterruptMask(uint32_t ulNewMaskValue)
-{
-	portCLEAR_INTERRUPT_MASK();
-	//if(cpu_id_get() == 0)
-		//t_printf("core[%d] vPortClearInterruptMask clear mask to 0xff\n", cpu_id_get());
-}
-#endif
 
-// for smp restore mask
-void portSET_INTERRUPT_MASK(uint32_t ulNewMaskValue)
+void portRESTORE_INTERRUPTS(uint32_t ulNewMaskValue)
 {
 	portCPU_IRQ_DISABLE();
 	asm volatile("mcr p15, 0, %0, c4, c6, 0" : : "r" ((uint32_t)ulNewMaskValue));
 	__asm volatile ("DSB");
 	__asm volatile ("ISB");
-	//if(cpu_id_get() == 0)
-		//t_printf("core[%d] portSET_INTERRUPT_MASK restore mask to 0x%x \n", cpu_id_get(), ulNewMaskValue);
-	portCPU_IRQ_ENABLE();
+	portCPU_IRQ_ENABLE();	
 }
-/*-----------------------------------------------------------*/
 
-#if 0
-uint32_t ulPortSetInterruptMask(void)
-{
-uint32_t ulReturn;
-
-	/* Interrupt in the CPU must be turned off while the ICCPMR is being
-	updated. */
-	portCPU_IRQ_DISABLE();
-	ulReturn = pdTRUE;
-#if 0
-	if (portICCPMR_PRIORITY_MASK_REGISTER == (uint32_t) (configMAX_API_CALL_INTERRUPT_PRIORITY << portPRIORITY_SHIFT)) {
-		/* Interrupts were already masked. */
-		ulReturn = pdTRUE;
-	} else {
-		ulReturn = pdFALSE;
-		portICCPMR_PRIORITY_MASK_REGISTER = (uint32_t) (configMAX_API_CALL_INTERRUPT_PRIORITY << portPRIORITY_SHIFT);
-		__asm volatile ("dsb\n"
-							"isb\n" ::: "memory");
-	}
-#else
-	uint32_t reg;
-
-	asm volatile("mrc p15, 0, %0, c4, c6, 0" : "=r" (reg));
-	//vs_printf("GICC ICC_PMR, priority mask:0x%x\n", reg);
-	if (reg == ((uint32_t)(configMAX_API_CALL_INTERRUPT_PRIORITY << portPRIORITY_SHIFT))) {
-		/* Interrupts were already masked. */
-		//vs_printf("ulPortSetInterruptMask already masked\n");
-		ulReturn = pdTRUE;
-	} else {
-		ulReturn = pdFALSE;
-		/* GICC  ICC_PMR set priority mask*/
-		asm volatile("mcr p15, 0, %0, c4, c6, 0" : : "r" ((uint32_t)(configMAX_API_CALL_INTERRUPT_PRIORITY << portPRIORITY_SHIFT)));
-		__asm volatile ("dsb\n"
-							"isb\n" ::: "memory");
-	}
-#endif
-	portCPU_IRQ_ENABLE();
-
-	return ulReturn;
-}
-#else //for smp
-//return origin mask
-uint32_t ulPortSetInterruptMask(void)
+uint32_t portDISABLE_INTERRUPTS(void)
 {
 	uint32_t ulReturn;
 
@@ -630,14 +535,9 @@ uint32_t ulPortSetInterruptMask(void)
 
 	asm volatile("mrc p15, 0, %0, c4, c6, 0" : "=r" (reg));
 	ulReturn = reg; //return mask value
-	//vs_printf("GICC ICC_PMR, priority mask:0x%x\n", reg);
+
 	if (reg == ((uint32_t)(configMAX_API_CALL_INTERRUPT_PRIORITY << portPRIORITY_SHIFT))) {
-		/* Interrupts were already masked. */
-		//vs_printf("ulPortSetInterruptMask already masked\n");
 	} else {
-		/* GICC  ICC_PMR set priority mask*/
-		//if(cpu_id_get() == 0)
-			//t_printf("core[%d] ulPortSetInterruptMask set mask origon:0x%x\n", cpu_id_get(), reg);
 		asm volatile("mcr p15, 0, %0, c4, c6, 0" : : "r" ((uint32_t)(configMAX_API_CALL_INTERRUPT_PRIORITY << portPRIORITY_SHIFT)));
 		ulReturn = ((uint32_t)(configMAX_API_CALL_INTERRUPT_PRIORITY << portPRIORITY_SHIFT));
 		__asm volatile ("dsb");
@@ -647,7 +547,16 @@ uint32_t ulPortSetInterruptMask(void)
 
 	return ulReturn;
 }
-#endif
+
+void portENABLE_INTERRUPTS(void)
+{
+	portCPU_IRQ_DISABLE();
+	asm volatile("mcr p15, 0, %0, c4, c6, 0" : : "r" ((uint32_t)portUNMASK_VALUE));
+	__asm volatile ("dsb");
+	__asm volatile ("isb");
+	portCPU_IRQ_ENABLE();		
+}
+
 /*-----------------------------------------------------------*/
 
 #if (configASSERT_DEFINED == 1)
@@ -714,7 +623,7 @@ void generic_timer_isr(int irq, void *param)
 	}
 
 	/* Ensure all interrupt priorities are active again. */
-	portCLEAR_INTERRUPT_MASK();
+	portENABLE_INTERRUPTS();
 
 	gt_ops.tval_set(TIMER_DELAY);
 	gt_ops.en_irq();

@@ -16,6 +16,7 @@
 #include <thomas_test_device.h>
 #include <smp.h>
 #include <hw_spinlock.h>
+#include <console2.h>
 
 extern void hw_spin_lock_init(void);
 void platform_init(void)
