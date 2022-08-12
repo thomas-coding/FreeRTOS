@@ -75,7 +75,7 @@ int main(void)
 	bm_printf("enter freertos main\n");
 	t_printf("t printf enter main....\n");
 	//start_second_core((void *)second_core_main);
-	//tiny_uart_console();
+	tiny_uart_console();
 
 	/* Create that task that handles the console itself. */
 	xTaskCreate(user_task,  /* The task that implements the command console. */

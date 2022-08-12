@@ -29,6 +29,7 @@ static int do_cp(struct tiny_cmd *cmd, int argc, char *argv[]);
 static int do_go(struct tiny_cmd *cmd, int argc, char *argv[]);
 static int do_exit(struct tiny_cmd *cmd, int argc, char *argv[]);
 static int do_help(struct tiny_cmd *cmd, int argc, char *argv[]);
+static int do_run_blink(struct tiny_cmd *cmd, int argc, char *argv[]);
 
 /* Command table */
 struct tiny_cmd tc_cmd_tb[] = {
@@ -44,6 +45,8 @@ struct tiny_cmd tc_cmd_tb[] = {
 		"cmp addr0 addr1 len           - Memory Compare"),
 	TINY_CMD("go", 2, 2, do_go,
 		"go addr                       - Jump to run"),
+	TINY_CMD("blink", 1, 1, do_run_blink,
+		"blink                       - Jump to run blinkdemo"),
 	TINY_CMD("exit", 1, 1, do_exit,
 		"exit                          - Exit console"),
 	TINY_CMD("help", 1, 2, do_help,
@@ -303,4 +306,14 @@ static void *map_sysmem(unsigned long vaddr, unsigned long len)
 static void unmap_sysmem(void *vaddr)
 {
 	/* TODO: Do some resource release is necessary */
+}
+
+/*
+ * Help
+ */
+static int do_run_blink(struct tiny_cmd *cmd, int argc, char *argv[])
+{
+
+	main_blinky();
+	return RET_CMD_DONE;
 }
