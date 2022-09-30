@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.10)
 
 project(thomas_a15)
 
+include(config.cmake)
+
 #toolchain
 set(CROSS_COMPILE $ENV{CROSS_COMPILE})
 set(CMAKE_C_COMPILER ${CROSS_COMPILE}gcc)
@@ -25,10 +27,11 @@ set(CMAKE_C_FLAGS
   -DmainCREATE_SIMPLE_BLINKY_DEMO_ONLY=1 ")
 
 #link
+#--specs=rdimon.specs
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 set(CMAKE_EXE_LINKER_FLAGS "-T ${CMAKE_HOME_DIRECTORY}/scripts/${LD_SCRIPT} \
 -Wl,-Map=linkmap.txt,--build-id=none -nostartfiles \
---specs=rdimon.specs ")
+--specs=nosys.specs ")
 
 #include
 include_directories(.)
@@ -78,6 +81,21 @@ set(BSP_SRC_LIST
     ${CURRENT_FOLDER}/bsp/common/tiny_command.c
     )
 
+if(${CONFIG_LIBC_STUB})
+set(LIBC_STUB_SRC_LIST
+    ${CURRENT_FOLDER}/libcstub/write.c
+    )
+add_definitions(-DCONFIG_LIBC_STUB)
+endif()
+
+if(${CONFIG_SMP})
+add_definitions(-DCONFIG_SMP)
+endif()
+
+if(${CONFIG_TINY_CONSOLE})
+add_definitions(-DCONFIG_TINY_CONSOLE)
+endif()
+
 set(FREERTOS_PORTABLE_SRC_LIST
     ${CURRENT_FOLDER}/portable/port.c
     ${CURRENT_FOLDER}/portable/portASM.S
@@ -95,6 +113,7 @@ set(FREERTOS_SRC_LIST
 set(SRC_LIST
     ${SRC_LIST}
     ${BSP_SRC_LIST}
+    ${LIBC_STUB_SRC_LIST}
     ${FREERTOS_SRC_LIST}
     ${FREERTOS_PORTABLE_SRC_LIST}
     )

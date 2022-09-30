@@ -90,8 +90,17 @@ int main(void)
 	platform_init();
 	bm_printf("enter freertos main\n");
 	t_printf("t printf enter main....\n");
+#ifdef CONFIG_LIBC_STUB
+	printf("print enter main\n");
+#endif
+
+#ifdef CONFIG_SMP
 	start_second_core((void *)second_core_main);
+#endif
+
+#ifdef CONFIG_TINY_CONSOLE
 	tiny_uart_console();
+#endif
 
 	/* Create that task that handles the console itself. */
 	xTaskCreate(user_task,  /* The task that implements the command console. */
