@@ -52,7 +52,7 @@ extern void vAssertCalled(void);
 #define configUSE_TICK_HOOK                      1
 #define configUSE_DAEMON_TASK_STARTUP_HOOK       0
 #define configCPU_CLOCK_HZ                       (24000000UL)
-#define configTICK_RATE_HZ                       ((TickType_t) 100)
+#define configTICK_RATE_HZ                       ((TickType_t) 1000)
 #define configMINIMAL_STACK_SIZE                 ((unsigned short) 2000)
 #define configTOTAL_HEAP_SIZE                    ((size_t) (1*1024*1024))
 #define configMAX_TASK_NAME_LEN                  (10)
@@ -134,5 +134,7 @@ void vSetupTickInterrupt(void);
  * See the FreeRTOS+CLI documentation for more information:
  * http://www.FreeRTOS.org/FreeRTOS-Plus/FreeRTOS_Plus_CLI/ */
 #define configCOMMAND_INT_MAX_OUTPUT_SIZE			2048
+
+#define configUSE_NEWLIB_REENTRANT				1
 
 #endif /* FREERTOS_CONFIG_H */

@@ -84,6 +84,7 @@ set(BSP_SRC_LIST
 if(${CONFIG_LIBC_STUB})
 set(LIBC_STUB_SRC_LIST
     ${CURRENT_FOLDER}/libcstub/write.c
+    ${CURRENT_FOLDER}/libcstub/malloc.c
     )
 add_definitions(-DCONFIG_LIBC_STUB)
 endif()
